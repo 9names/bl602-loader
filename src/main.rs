@@ -2,22 +2,12 @@
 #![no_main]
 
 use panic_halt as _;
-
-// use bl602_hal as hal;
 use bl602_rom_wrapper::sflash;
 
 use sflash::{
     sf_cfg::SF_Ctrl_Set_Owner, SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE,
     SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB, SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB,
 };
-
-/// Can't build without interrupt handler, we get that via main by magic?
-#[riscv_rt::entry]
-fn main() -> ! {
-    loop {
-        
-    }
-}
 
 /// Erase the sector at the given address in flash
 ///

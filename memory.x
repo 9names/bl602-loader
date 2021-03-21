@@ -1,15 +1,50 @@
-MEMORY
-{
-    ROM       (rx)  : ORIGIN = 0x21000000, LENGTH = 128K
-    ITCM      (wxa) : ORIGIN = 0x22008000, LENGTH = 48K
-    DTCM      (wxa) : ORIGIN = 0x22014000, LENGTH = 48K
-    XIP_FLASH (rwx) : ORIGIN = 0x23000000, LENGTH = 16M
-    WIFI_RAM  (wxa) : ORIGIN = 0x42030000, LENGTH = 112K
-}
 
-REGION_ALIAS("REGION_TEXT", DTCM);
-REGION_ALIAS("REGION_RODATA", DTCM);
-REGION_ALIAS("REGION_DATA", ITCM);
-REGION_ALIAS("REGION_BSS", ITCM);
-REGION_ALIAS("REGION_HEAP", ITCM);
-REGION_ALIAS("REGION_STACK", ITCM);
+SECTIONS {
+    . = 0x0;
+
+    /* Section for code and readonly data, specified by flashloader standard. */
+    PrgCode : {
+        . = ALIGN(4);
+
+        /* The KEEP is necessary to ensure that the
+         * sections don't get garbage collected by the linker.
+         *
+         * Because this is not a normal binary with an entry point,
+         * the linker would just discard all the code without the
+         * KEEP statement here.
+         */
+
+        KEEP(*(.text))
+        KEEP(*(.text.*))
+
+        KEEP(*(.rodata))
+        KEEP(*(.rodata.*))
+
+        . = ALIGN(4);
+    }
+
+    /* Section for data, specified by flashloader standard. */
+    PrgData : {
+        *(.data .data.*)
+        *(.sdata .sdata.*)
+
+    }
+
+    PrgData : {
+        /* Zero-initialized data */
+        *(.bss .bss.*)
+        *(.sbss .sbss.*)
+
+        *(COMMON)
+    }
+
+    /* Description of the flash algorithm */
+    DeviceData . : {
+        /* The device data content is only for external tools,
+         * and usually not referenced by the code.
+         *
+         * The KEEP statement ensures it's not removed by accident.
+         */
+        KEEP(*(DeviceData))
+    }
+}

@@ -6,8 +6,6 @@ edition = "2018"
 
 [dependencies]
 panic-halt = "0.2.0"
-riscv = "0.6.0"
-riscv-rt = "0.8.0"
 bl602_rom_wrapper = { git="https://github.com/9names/bl602-rom-wrapper", branch="main" }
 
 [profile.release]
