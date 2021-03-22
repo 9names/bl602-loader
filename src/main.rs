@@ -1,8 +1,8 @@
 #![no_std]
 #![no_main]
 
-use panic_never as _;
 use bl602_rom_wrapper::sflash;
+use panic_never as _;
 
 use sflash::{
     sf_cfg::SF_Ctrl_Set_Owner, SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE,
