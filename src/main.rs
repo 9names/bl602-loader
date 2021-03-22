@@ -16,9 +16,11 @@ use sflash::{
 #[inline(never)]
 pub extern "C" fn EraseSector(adr: u32) -> i32 {
     let mut cfg = sflash::flashconfig::winbond_80_ew_cfg();
-    let sector = adr >> 12;
-    sflash::SFlash_Sector_Erase(&mut cfg, sector);
-    0
+    let adr = adr >> 12;
+    match sflash::SFlash_Sector_Erase(&mut cfg, adr) {
+        0 => 0,
+        _ => 1,
+    }
 }
 
 /// Initializes the microcontroller for Flash programming. Returns 0 on Success, 1 otherwise
@@ -57,9 +59,10 @@ pub extern "C" fn Init(_adr: u32, _clk: u32, _fnc: u32) -> i32 {
 #[inline(never)]
 pub extern "C" fn ProgramPage(adr: u32, sz: u32, buf: *mut u8) -> i32 {
     let mut cfg = sflash::flashconfig::winbond_80_ew_cfg();
-    sflash::SFlash_Program(&mut cfg, SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE, adr, buf, sz);
-    
-    0
+    match sflash::SFlash_Program(&mut cfg, SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE, adr, buf, sz) {
+        0 => 0,
+        _ => 1,
+    }
 }
 
 /// De-initializes the microcontroller after Flash programming. Returns 0 on Success, 1 otherwise
