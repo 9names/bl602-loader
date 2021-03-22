@@ -29,6 +29,19 @@ pub extern "C" fn EraseSector(adr: u32) -> i32 {
     }
 }
 
+/// Erase the chip
+///
+/// `Return` - 0 on success, 1 on failure.
+#[no_mangle]
+#[inline(never)]
+pub extern "C" fn EraseChip() -> i32 {
+    let mut cfg = sflash::flashconfig::winbond_80_ew_cfg();
+    match sflash::SFlash_Chip_Erase(&mut cfg) {
+        0 => 0,
+        _ => 1,
+    }
+}
+
 /// Initializes the microcontroller for Flash programming. Returns 0 on Success, 1 otherwise
 ///
 /// This is invoked whenever an attempt is made to download the program to Flash.
