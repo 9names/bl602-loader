@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use panic_halt as _;
+use panic_never as _;
 use bl602_rom_wrapper::sflash;
 
 use sflash::{
@@ -16,7 +16,7 @@ use sflash::{
 #[inline(never)]
 pub extern "C" fn EraseSector(adr: u32) -> i32 {
     let mut cfg = sflash::flashconfig::winbond_80_ew_cfg();
-    let sector = adr / cfg.sectorSize as u32;
+    let sector = adr >> 12;
     sflash::SFlash_Sector_Erase(&mut cfg, sector);
     0
 }
