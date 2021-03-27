@@ -22,8 +22,9 @@ pub extern "C" fn EraseSector(adr: u32) -> i32 {
     // sector size is 4k (2^12)
     // division is a checked operation, don't want to pull in panic handlers
     // so use bit shifts to get the target sector instead
-    let adr = adr >> 12;
-    match sflash::SFlash_Sector_Erase(&mut cfg, adr) {
+    let addr_native = adr.wrapping_sub(0x2300_0000);
+    let target_sector = addr_native >> 12;
+    match sflash::SFlash_Sector_Erase(&mut cfg, target_sector) {
         0 => 0,
         _ => 1,
     }
@@ -78,8 +79,8 @@ pub extern "C" fn Init(_adr: u32, _clk: u32, _fnc: u32) -> i32 {
 #[inline(never)]
 pub extern "C" fn ProgramPage(adr: u32, sz: u32, buf: *mut u8) -> i32 {
     let mut cfg = sflash::flashconfig::winbond_80_ew_cfg();
-    // TODO: work out whether addr here starts at 0x2300_0000 or 0x0
-    match sflash::SFlash_Program(&mut cfg, SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE, adr, buf, sz) {
+    let addr = adr.wrapping_sub(0x2300_0000);
+    match sflash::SFlash_Program(&mut cfg, SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE, addr, buf, sz) {
         0 => 0,
         _ => 1,
     }
