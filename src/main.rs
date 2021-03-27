@@ -16,12 +16,14 @@ use sflash::{
 #[inline(never)]
 pub extern "C" fn EraseSector(adr: u32) -> i32 {
     let mut cfg = sflash::flashconfig::winbond_80_ew_cfg();
-    // Don't know yet whether the address here is a sector number or an absolute address
-    // Assume for now that it's an address, and our target needs to be a sector number.
+    // EraseSector is given an absolute base address to erase
+    // SFlash_Sector_Erase expects a target sector
+    // We could use SFlash_Erase instead (takes start and end address),
+    // but Sector_Erase should work
 
-    // sector size is 4k (2^12)
+    // sector size is 4KB (2^12, 4096 bytes)
     // division is a checked operation, don't want to pull in panic handlers
-    // so use bit shifts to get the target sector instead
+    // use bit shifts to get the target sector instead
     let addr_native = adr.wrapping_sub(0x2300_0000);
     let target_sector = addr_native >> 12;
     match sflash::SFlash_Sector_Erase(&mut cfg, target_sector) {
@@ -96,7 +98,8 @@ pub extern "C" fn ProgramPage(adr: u32, sz: u32, buf: *mut u8) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn UnInit(_fnc: u32) -> i32 {
-    // Should we care about this? It should be set during reset anyway...
+    // Put the flash controller back into memory-mapped mode
+    // TODO: re-enable cache
     SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB);
 
     0
