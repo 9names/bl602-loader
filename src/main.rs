@@ -2,6 +2,7 @@
 #![no_main]
 
 use bl602_rom_wrapper::sflash;
+use core::slice;
 use panic_never as _;
 
 use sflash::{
@@ -113,6 +114,52 @@ pub extern "C" fn UnInit(_fnc: u32) -> i32 {
     SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB);
 
     0
+}
+
+/// Compares the content of the Flash memory with the program code *buf.
+/// Returns (adr+sz) on success, failing address otherwise
+///
+/// This is invoked at the end of an erasing, programming, or verifying step.
+///
+/// # Arguments
+///
+/// `adr` - specifies the start address of the page that is to be verified.
+///
+/// `sz` -  specifies the data size in the data buffer
+///
+/// `buf` - data to be compared
+/// # Safety
+/// We're calling into C data structures, there's no safety here
+#[no_mangle]
+#[inline(never)]
+pub unsafe extern "C" fn Verify(adr: u32, sz: u32, buf: *mut u8) -> u32 {
+    let mut cfg = sflash::flashconfig::winbond_80_ew_cfg();
+    let addr = adr.wrapping_sub(0x2300_0000);
+    let readbuf: [u8; 4096] = [0; 4096];
+    let verifybuf = slice::from_raw_parts(buf, sz as usize);
+
+    if sz > 4096 {
+        return 0;
+    }
+
+    if sflash::SFlash_Read(
+        &mut cfg,
+        SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE,
+        0,
+        addr,
+        buf,
+        sz,
+    ) != 0
+    {
+        return 1;
+    }
+
+    for i in 0..sz as usize {
+        if verifybuf[i] != readbuf[i] {
+            return 0x2300_0000 + i as u32;
+        }
+    }
+    adr + sz
 }
 
 const fn sectors() -> [FlashSector; 512] {
