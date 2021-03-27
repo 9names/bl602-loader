@@ -36,10 +36,11 @@ SECTIONS {
         *(.sbss .sbss.*)
 
         *(COMMON)
+        KEEP(*(PrgData))
     }
 
     /* Description of the flash algorithm */
-    DeviceData . : {
+    DevDscr . : {
         /* The device data content is only for external tools,
          * and usually not referenced by the code.
          *

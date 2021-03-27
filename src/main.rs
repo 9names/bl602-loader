@@ -9,6 +9,16 @@ use sflash::{
     SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB, SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB,
 };
 
+/// Segger tools require the PrgData section to exist in the target binary
+///
+/// They also scan the flashloader binary for this symbol to determine the section location
+/// If they cannot find it, the tool exists. This variable serves no other purpose
+#[allow(non_upper_case_globals)]
+#[no_mangle]
+#[used]
+#[link_section = "PrgData"]
+pub static PRGDATA_Start: usize = 0;
+
 /// Erase the sector at the given address in flash
 ///
 /// `Return` - 0 on success, 1 on failure.
