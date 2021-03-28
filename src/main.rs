@@ -9,6 +9,8 @@ use sflash::{
     sf_cfg::SF_Ctrl_Set_Owner, SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE,
     SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB, SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB,
 };
+/// Position in memory where SPI flash is mapped to
+const BASE_ADDRESS:u32 = 0x2300_0000;
 
 /// Segger tools require the PrgData section to exist in the target binary
 ///
@@ -35,7 +37,7 @@ pub extern "C" fn EraseSector(adr: u32) -> i32 {
     // sector size is 4KB (2^12, 4096 bytes)
     // division is a checked operation, don't want to pull in panic handlers
     // use bit shifts to get the target sector instead
-    let addr_native = adr.wrapping_sub(0x2300_0000);
+    let addr_native = adr.wrapping_sub(BASE_ADDRESS);
     let target_sector = addr_native >> 12;
     match sflash::SFlash_Sector_Erase(&mut cfg, target_sector) {
         0 => 0,
@@ -92,7 +94,7 @@ pub extern "C" fn Init(_adr: u32, _clk: u32, _fnc: u32) -> i32 {
 #[inline(never)]
 pub extern "C" fn ProgramPage(adr: u32, sz: u32, buf: *mut u8) -> i32 {
     let mut cfg = sflash::flashconfig::winbond_80_ew_cfg();
-    let addr = adr.wrapping_sub(0x2300_0000);
+    let addr = adr.wrapping_sub(BASE_ADDRESS);
     match sflash::SFlash_Program(&mut cfg, SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE, addr, buf, sz) {
         0 => 0,
         _ => 1,
@@ -134,7 +136,7 @@ pub extern "C" fn UnInit(_fnc: u32) -> i32 {
 #[inline(never)]
 pub unsafe extern "C" fn Verify(adr: u32, sz: u32, buf: *mut u8) -> u32 {
     let mut cfg = sflash::flashconfig::winbond_80_ew_cfg();
-    let addr = adr.wrapping_sub(0x2300_0000);
+    let addr = adr.wrapping_sub(BASE_ADDRESS);
     let readbuf: [u8; 4096] = [0; 4096];
     let verifybuf = slice::from_raw_parts(buf, sz as usize);
 
@@ -156,7 +158,7 @@ pub unsafe extern "C" fn Verify(adr: u32, sz: u32, buf: *mut u8) -> u32 {
 
     for i in 0..sz as usize {
         if verifybuf[i] != readbuf[i] {
-            return 0x2300_0000 + i as u32;
+            return BASE_ADDRESS + i as u32;
         }
     }
     adr + sz
@@ -183,7 +185,7 @@ pub static FlashDevice: FlashDeviceDescription = FlashDeviceDescription {
     vers: 0x0101,
     dev_name: [0u8; 128],
     dev_type: 5,
-    dev_addr: 0x2300_0000,
+    dev_addr: BASE_ADDRESS,
     device_size: 0x1e8480,
     page_size: 256,
     _reserved: 0,
