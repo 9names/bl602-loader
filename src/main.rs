@@ -149,7 +149,7 @@ pub extern "C" fn UnInit(_fnc: u32) -> i32 {
 
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn Verify(adr: u32, sz: u32, buf: *mut u8) -> u32 {
+pub unsafe extern "C" fn Verify_DISABLED(adr: u32, sz: u32, buf: *mut u8) -> u32 {
     let mut cfg = sflash::flashconfig::winbond_80_ew_cfg();
     let addr = adr.wrapping_sub(BASE_ADDRESS);
     let readbuf: [u8; 4096] = [0; 4096];
