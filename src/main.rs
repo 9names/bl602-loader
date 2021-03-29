@@ -83,7 +83,9 @@ pub extern "C" fn EraseChip() -> i32 {
 #[inline(never)]
 pub extern "C" fn Init(_adr: u32, _clk: u32, _fnc: u32) -> i32 {
     // disable memory-mapped flash
+    // do nothing on verify to speed things up
     sflash::SFlash_Cache_Read_Disable();
+    SF_Ctrl_Set_Flash_Image_Offset(0);
     SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB);
 
     0
@@ -124,7 +126,9 @@ pub extern "C" fn UnInit(_fnc: u32) -> i32 {
     // Put the flash controller back into memory-mapped mode
     // TODO: re-enable cache
     SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB);
-
+    // TODO: work out where to set this to, whether we can after verify, etc
+    //SF_Ctrl_Set_Flash_Image_Offset(0x11000);
+    SFlash_Cache_Flush();
     0
 }
 
@@ -142,6 +146,7 @@ pub extern "C" fn UnInit(_fnc: u32) -> i32 {
 /// `buf` - data to be compared
 /// # Safety
 /// We're calling into C data structures, there's no safety here
+
 #[no_mangle]
 #[inline(never)]
 pub unsafe extern "C" fn Verify(adr: u32, sz: u32, buf: *mut u8) -> u32 {
