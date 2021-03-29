@@ -13,6 +13,13 @@ use core::{intrinsics::transmute, ops::Range, slice};
 use panic_abort as _;
 
 /// Position in memory where SPI flash is mapped to
+///
+/// This can be a little misleading. XIP code is mapped to 0x2300_0000 but the flash location this refers to can be modified.
+/// Boot2, for instance, 0x11000 in SPI to 0x2300_0000 before booting. Other code seems to map 0x10000.
+///
+/// So in order to get to the right location, we either need to modify the addresses during read/write/verify or we need to modify our
+/// binaries to get to the correct offset. If we fake it, verify is *SUPER* slow compared to memory mapped read.
+/// So let try setting the flash offset to 0 for now, and put all the pressure on the caller
 const BASE_ADDRESS: u32 = 0x2300_0000;
 
 /// Segger tools require the PrgData section to exist in the target binary
