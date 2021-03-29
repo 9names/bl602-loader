@@ -3,7 +3,7 @@
 
 use bl602_rom_wrapper::sflash;
 use core::slice;
-use panic_never as _;
+use panic_abort as _;
 
 use sflash::{
     sf_cfg::SF_Ctrl_Set_Owner, SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE,
