@@ -1,16 +1,19 @@
 #![no_std]
 #![no_main]
 
-use bl602_rom_wrapper::sflash;
-use core::slice;
+use bl602_rom_wrapper::sflash::{
+    self,
+    sf_cfg::{SF_Ctrl_Set_Flash_Image_Offset, SF_Ctrl_Set_Owner},
+    SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE, SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB,
+    SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB, SFlash_Cache_Flush,
+};
+
+// These are for verify, remove them if we don't implement that
+use core::{intrinsics::transmute, ops::Range, slice};
 use panic_abort as _;
 
-use sflash::{
-    sf_cfg::SF_Ctrl_Set_Owner, SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE,
-    SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB, SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB,
-};
 /// Position in memory where SPI flash is mapped to
-const BASE_ADDRESS:u32 = 0x2300_0000;
+const BASE_ADDRESS: u32 = 0x2300_0000;
 
 /// Segger tools require the PrgData section to exist in the target binary
 ///
