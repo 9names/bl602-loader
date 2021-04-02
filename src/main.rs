@@ -1,11 +1,13 @@
 #![no_std]
 #![no_main]
 
-use bl602_rom_wrapper::sflash::{
+use bl602_rom_wrapper::rom::sflash as sflash;
+
+use bl602_rom_wrapper::rom::{
     self,
-    sf_cfg::{SF_Ctrl_Set_Flash_Image_Offset, SF_Ctrl_Set_Owner},
+    sf_ctrl::{SF_Ctrl_Set_Flash_Image_Offset,SF_Ctrl_Set_Owner},
     SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE, SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB,
-    SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB, SFlash_Cache_Flush,
+    SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB,
 };
 
 // These are for verify, remove them if we don't implement that
@@ -38,7 +40,7 @@ pub static PRGDATA_Start: usize = 0;
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn EraseSector(adr: u32) -> i32 {
-    let mut cfg = sflash::flashconfig::winbond_80_ew_cfg();
+    let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
     // EraseSector is given an absolute base address to erase
     // SFlash_Sector_Erase expects a target sector
     // We could use SFlash_Erase instead (takes start and end address),
@@ -61,7 +63,7 @@ pub extern "C" fn EraseSector(adr: u32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn EraseChip() -> i32 {
-    let mut cfg = sflash::flashconfig::winbond_80_ew_cfg();
+    let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
     match sflash::SFlash_Chip_Erase(&mut cfg) {
         0 => 0,
         _ => 1,
@@ -105,7 +107,7 @@ pub extern "C" fn Init(_adr: u32, _clk: u32, _fnc: u32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn ProgramPage(adr: u32, sz: u32, buf: *mut u8) -> i32 {
-    let mut cfg = sflash::flashconfig::winbond_80_ew_cfg();
+    let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
     let addr = adr.wrapping_sub(BASE_ADDRESS);
     match sflash::SFlash_Program(&mut cfg, SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE, addr, buf, sz) {
         0 => 0,
@@ -128,7 +130,7 @@ pub extern "C" fn UnInit(_fnc: u32) -> i32 {
     SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB);
     // TODO: work out where to set this to, whether we can after verify, etc
     //SF_Ctrl_Set_Flash_Image_Offset(0x11000);
-    SFlash_Cache_Flush();
+    sflash::SFlash_Cache_Flush();
     0
 }
 
@@ -150,7 +152,7 @@ pub extern "C" fn UnInit(_fnc: u32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub unsafe extern "C" fn Verify_DISABLED(adr: u32, sz: u32, buf: *mut u8) -> u32 {
-    let mut cfg = sflash::flashconfig::winbond_80_ew_cfg();
+    let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
     let addr = adr.wrapping_sub(BASE_ADDRESS);
     let readbuf: [u8; 4096] = [0; 4096];
     let verifybuf = slice::from_raw_parts(buf, sz as usize);
