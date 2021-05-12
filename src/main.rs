@@ -2,16 +2,18 @@
 #![no_main]
 
 use bl602_rom_wrapper::rom::sflash as sflash;
+use bl602_rom_wrapper::rom::xip_sflash as xip_sflash;
 
 use bl602_rom_wrapper::rom::{
     self,
     sf_ctrl::{SF_Ctrl_Set_Flash_Image_Offset,SF_Ctrl_Set_Owner},
-    SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE, SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB,
+    SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE,
     SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB,
 };
 
 // These are for verify, remove them if we don't implement that
-use core::{intrinsics::transmute, ops::Range, slice};
+// intrinsics::transmute, ops::Range,
+use core::{slice};
 use panic_abort as _;
 
 /// Position in memory where SPI flash is mapped to
@@ -27,7 +29,7 @@ const BASE_ADDRESS: u32 = 0x2300_0000;
 /// Segger tools require the PrgData section to exist in the target binary
 ///
 /// They also scan the flashloader binary for this symbol to determine the section location
-/// If they cannot find it, the tool exists. This variable serves no other purpose
+/// If they cannot find it, the tool exits. This variable serves no other purpose
 #[allow(non_upper_case_globals)]
 #[no_mangle]
 #[used]
@@ -127,10 +129,10 @@ pub extern "C" fn ProgramPage(adr: u32, sz: u32, buf: *mut u8) -> i32 {
 pub extern "C" fn UnInit(_fnc: u32) -> i32 {
     // Put the flash controller back into memory-mapped mode
     // TODO: re-enable cache
-    SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB);
-    // TODO: work out where to set this to, whether we can after verify, etc
-    //SF_Ctrl_Set_Flash_Image_Offset(0x11000);
-    sflash::SFlash_Cache_Flush();
+
+    // Cheating for now and calling the XIP function, which seems to do the trick
+    let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
+    xip_sflash::XIP_SFlash_State_Restore(&mut cfg, 0);
     0
 }
 
