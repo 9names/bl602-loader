@@ -1,20 +1,21 @@
 #![no_std]
 #![no_main]
 
-use bl602_rom_wrapper::rom::sflash as sflash;
-use bl602_rom_wrapper::rom::xip_sflash as xip_sflash;
+use bl602_rom_wrapper::rom::sflash;
+use bl602_rom_wrapper::rom::SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB;
+// use bl602_rom_wrapper::rom::xip_sflash as xip_sflash;
+use bl602_pac as pac;
 
 use bl602_rom_wrapper::rom::{
     self,
-    sf_ctrl::{SF_Ctrl_Set_Flash_Image_Offset,SF_Ctrl_Set_Owner},
-    SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE,
-    SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB,
+    sf_ctrl::{SF_Ctrl_Set_Flash_Image_Offset, SF_Ctrl_Set_Owner},
+    SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE, SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB,
 };
 
 // These are for verify, remove them if we don't implement that
 // intrinsics::transmute, ops::Range,
-use core::{slice};
-use panic_abort as _;
+use core::slice;
+// use panic_abort as _;
 
 /// Position in memory where SPI flash is mapped to
 ///
@@ -36,12 +37,90 @@ const BASE_ADDRESS: u32 = 0x2300_0000;
 #[link_section = "PrgData"]
 pub static PRGDATA_Start: usize = 0;
 
+// 0 => {
+//     //green
+//     glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_0_o().set_bit());
+// },
+// 1 => {
+//     //red
+//     glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_1_o().set_bit());
+// },
+// 2 => {
+//     //blue
+//     glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_2_o().set_bit());
+// },
+
+pub enum Color {
+    Black,
+    Red,
+    Green,
+    Blue,
+    Yellow,
+    Cyan,
+    Magenta,
+    White,
+}
+
+// Black = (false,false,false),
+// Red = (true,false,false),
+// Green = (false,true,false),
+// Blue = (false,false,true),
+// Yellow = (true,true,false),
+// Cyan = (false,true,true),
+// Magenta = (true,false,true),
+// White = (true,true,true)
+
+#[inline(always)]
+pub fn set_color(color: Color) {
+    let glb = unsafe { &*pac::GLB::ptr() };
+    // let color = u32::from(color);
+    let (r, g, b) = match color {
+        Color::Black => {
+            // black
+            (false, false, false)
+        }
+        Color::Red => {
+            // red
+            (true, false, false)
+        }
+        Color::Green => {
+            // green
+            (false, true, false)
+        }
+        Color::Blue => {
+            // blue
+            (false, false, true)
+        }
+        Color::Yellow => {
+            // yellow
+            (true, true, false)
+        }
+        Color::Cyan => {
+            // cyan
+            (false, true, true)
+        }
+        Color::Magenta => {
+            // magenta
+            (true, false, true)
+        }
+        Color::White => {
+            // white
+            (true, true, true)
+        }
+    };
+
+    glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_0_o().bit(g));
+    glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_1_o().bit(r));
+    glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_2_o().bit(b));
+}
+
 /// Erase the sector at the given address in flash
 ///
 /// `Return` - 0 on success, 1 on failure.
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn EraseSector(adr: u32) -> i32 {
+    set_color(Color::Magenta);
     let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
     // EraseSector is given an absolute base address to erase
     // SFlash_Sector_Erase expects a target sector
@@ -53,11 +132,40 @@ pub extern "C" fn EraseSector(adr: u32) -> i32 {
     // use bit shifts to get the target sector instead
     let addr_native = adr.wrapping_sub(BASE_ADDRESS);
     let target_sector = addr_native >> 12;
-    match sflash::SFlash_Sector_Erase(&mut cfg, target_sector) {
+    let _ = match sflash::SFlash_Sector_Erase(&mut cfg, target_sector) {
         0 => 0,
         _ => 1,
-    }
+    };
+    0
+    // match sflash::SFlash_Chip_Erase(&mut cfg) {
+    //     0 => 0,
+    //     _ => 1,
+    // }
 }
+
+/// Erase the sector at the given address in flash
+///
+/// `Return` - 0 on success, 1 on failure.
+// #[no_mangle]
+// #[inline(never)]
+// pub extern "C" fn EraseSector(adr: u32) -> i32 {
+//     let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
+//     // EraseSector is given an absolute base address to erase
+//     // SFlash_Sector_Erase expects a target sector
+//     // We could use SFlash_Erase instead (takes start and end address),
+//     // but Sector_Erase should work
+
+//     // sector size is 4KB (2^12, 4096 bytes)
+//     // division is a checked operation, don't want to pull in panic handlers
+//     // use bit shifts to get the target sector instead
+//     // Work out sector at start of address
+//     let start_addr = adr & 0x10000;
+//     let end_addr = start_addr + (0x10000-1);
+//     match sflash::SFlash_Erase(&mut cfg, start_addr, end_addr) {
+//         0 => 0,
+//         _ => 1,
+//     }
+// }
 
 /// Erase the chip
 ///
@@ -65,11 +173,17 @@ pub extern "C" fn EraseSector(adr: u32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn EraseChip() -> i32 {
+    let glb = unsafe { &*pac::GLB::ptr() };
+    glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_0_o().set_bit());
+    glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_1_o().set_bit());
+    glb.gpio_cfgctl32
+        .modify(|_, w| w.reg_gpio_2_o().clear_bit());
     let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
-    match sflash::SFlash_Chip_Erase(&mut cfg) {
+    let _ = match sflash::SFlash_Chip_Erase(&mut cfg) {
         0 => 0,
         _ => 1,
-    }
+    };
+    0
 }
 
 /// Initializes the microcontroller for Flash programming. Returns 0 on Success, 1 otherwise
@@ -88,11 +202,73 @@ pub extern "C" fn EraseChip() -> i32 {
 pub extern "C" fn Init(_adr: u32, _clk: u32, _fnc: u32) -> i32 {
     // disable memory-mapped flash
     // do nothing on verify to speed things up
-    sflash::SFlash_Cache_Read_Disable();
-    SF_Ctrl_Set_Flash_Image_Offset(0);
-    SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB);
 
-    0
+    let glb = unsafe { &*pac::GLB::ptr() };
+    glb.gpio_cfgctl0.modify(|_, w| unsafe {
+        w.reg_gpio_0_func_sel().bits(11);
+        w.reg_gpio_0_ie().clear_bit();
+        w.reg_gpio_0_pu().clear_bit();
+        w.reg_gpio_0_pd().clear_bit();
+        w.reg_gpio_0_drv().bits(1);
+        w.reg_gpio_0_smt().clear_bit();
+        w
+    });
+    glb.gpio_cfgctl34.modify(|_, w| w.reg_gpio_0_oe().set_bit());
+
+    glb.gpio_cfgctl0.modify(|_, w| unsafe {
+        w.reg_gpio_1_func_sel().bits(11);
+        w.reg_gpio_1_ie().clear_bit();
+        w.reg_gpio_1_pu().clear_bit();
+        w.reg_gpio_1_pd().clear_bit();
+        w.reg_gpio_1_drv().bits(1);
+        w.reg_gpio_1_smt().clear_bit();
+        w
+    });
+    glb.gpio_cfgctl34.modify(|_, w| w.reg_gpio_1_oe().set_bit());
+
+    glb.gpio_cfgctl1.modify(|_, w| unsafe {
+        w.reg_gpio_2_func_sel().bits(11);
+        w.reg_gpio_2_ie().clear_bit();
+        w.reg_gpio_2_pu().clear_bit();
+        w.reg_gpio_2_pd().clear_bit();
+        w.reg_gpio_2_drv().bits(1);
+        w.reg_gpio_2_smt().clear_bit();
+        w
+    });
+    glb.gpio_cfgctl34.modify(|_, w| w.reg_gpio_2_oe().set_bit());
+
+    // glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_0_o().clear_bit());
+    // glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_1_o().clear_bit());
+    // glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_2_o().clear_bit());
+
+    match _fnc {
+        0 => {
+            //green
+            set_color(Color::Green);
+            // glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_0_o().set_bit());
+        }
+        1 => {
+            //red
+            set_color(Color::Red);
+            // glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_1_o().set_bit());
+        }
+        2 => {
+            //blue
+            set_color(Color::Blue);
+            // glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_2_o().set_bit());
+        }
+        _ => {}
+    }
+
+    if _fnc == 3 {
+        0
+    } else {
+        sflash::SFlash_Cache_Read_Disable();
+        SF_Ctrl_Set_Flash_Image_Offset(0);
+        SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB);
+
+        0
+    }
 }
 
 /// Write code into the Flash memory. Call this to download a program to Flash. Returns 0 on Success, 1 otherwise
@@ -109,12 +285,20 @@ pub extern "C" fn Init(_adr: u32, _clk: u32, _fnc: u32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn ProgramPage(adr: u32, sz: u32, buf: *mut u8) -> i32 {
+    // Init(1,1,1);
+    set_color(Color::Cyan);
     let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
     let addr = adr.wrapping_sub(BASE_ADDRESS);
-    match sflash::SFlash_Program(&mut cfg, SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE, addr, buf, sz) {
-        0 => 0,
-        _ => 1,
+    let result =
+        match sflash::SFlash_Program(&mut cfg, SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE, addr, buf, sz) {
+            0 => 0,
+            _ => 1,
+        };
+    if result == 1 {
+        set_color(Color::Red);
     }
+    result
+    // 0
 }
 
 /// De-initializes the microcontroller after Flash programming. Returns 0 on Success, 1 otherwise
@@ -127,12 +311,15 @@ pub extern "C" fn ProgramPage(adr: u32, sz: u32, buf: *mut u8) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn UnInit(_fnc: u32) -> i32 {
+    set_color(Color::Black);
     // Put the flash controller back into memory-mapped mode
     // TODO: re-enable cache
 
     // Cheating for now and calling the XIP function, which seems to do the trick
-    let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
-    xip_sflash::XIP_SFlash_State_Restore(&mut cfg, 0);
+    //let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
+    //xip_sflash::XIP_SFlash_State_Restore(&mut cfg, 0);
+    SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB);
+    sflash::SFlash_Cache_Flush();
     0
 }
 
@@ -206,11 +393,11 @@ pub static FlashDevice: FlashDeviceDescription = FlashDeviceDescription {
     dev_type: 5,
     dev_addr: BASE_ADDRESS,
     device_size: 0x1e8480,
-    page_size: 256,
+    page_size: 4096,
     _reserved: 0,
     empty: 0xff,
-    program_time_out: 5,
-    erase_time_out: 20000,
+    program_time_out: 500,
+    erase_time_out: 6000,
     flash_sectors: sectors(),
 };
 
@@ -250,3 +437,16 @@ const SECTOR_END: FlashSector = FlashSector {
     size: 0xffff_ffff,
     address: 0xffff_ffff,
 };
+
+use core::panic::PanicInfo;
+
+#[panic_handler]
+fn panic(_info: &PanicInfo) -> ! {
+    unsafe {
+        let glb = &*pac::GLB::ptr();
+        glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_0_o().set_bit());
+        glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_1_o().set_bit());
+        glb.gpio_cfgctl32.modify(|_, w| w.reg_gpio_2_o().set_bit());
+        loop {}
+    }
+}

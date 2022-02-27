@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 panic-abort = "0.3.2"
 bl602_rom_wrapper = { git="https://github.com/9names/bl602-rom-wrapper", branch="main" }
+bl602-pac = { git = "https://github.com/sipeed/bl602-pac", branch = "main" }
 
 [profile.release]
 codegen-units = 1 # better optimizations

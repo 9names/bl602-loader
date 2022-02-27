@@ -6,7 +6,7 @@ rustflags = [
   # We don't know where the flash loader will be
   # placed in memory, so we need to create
   # position independent code (pic).
-  "-C", "relocation-model=pic",
+  # "-C", "relocation-model=pic",
 ]
 
 [build]
