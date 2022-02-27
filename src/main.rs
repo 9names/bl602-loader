@@ -88,11 +88,14 @@ pub extern "C" fn EraseChip() -> i32 {
 pub extern "C" fn Init(_adr: u32, _clk: u32, _fnc: u32) -> i32 {
     // disable memory-mapped flash
     // do nothing on verify to speed things up
-    sflash::SFlash_Cache_Read_Disable();
-    SF_Ctrl_Set_Flash_Image_Offset(0);
-    SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB);
-
-    0
+    if _fnc == 3 {
+        0
+    } else {
+        sflash::SFlash_Cache_Read_Disable();
+        SF_Ctrl_Set_Flash_Image_Offset(0);
+        SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB);
+        0
+    }
 }
 
 /// Write code into the Flash memory. Call this to download a program to Flash. Returns 0 on Success, 1 otherwise
@@ -133,6 +136,7 @@ pub extern "C" fn UnInit(_fnc: u32) -> i32 {
     // Cheating for now and calling the XIP function, which seems to do the trick
     let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
     xip_sflash::XIP_SFlash_State_Restore(&mut cfg, 0);
+    sflash::SFlash_Cache_Flush();
     0
 }
 
