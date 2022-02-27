@@ -209,7 +209,7 @@ pub static FlashDevice: FlashDeviceDescription = FlashDeviceDescription {
     page_size: 256,
     _reserved: 0,
     empty: 0xff,
-    program_time_out: 5,
+    program_time_out: 500,
     erase_time_out: 20000,
     flash_sectors: sectors(),
 };
