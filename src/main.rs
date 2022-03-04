@@ -1,20 +1,20 @@
 #![no_std]
 #![no_main]
 
-use bl602_rom_wrapper::rom::sflash as sflash;
-use bl602_rom_wrapper::rom::xip_sflash as xip_sflash;
+use bl602_rom_wrapper::rom::sflash;
+use bl602_rom_wrapper::rom::SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB;
 
 use bl602_rom_wrapper::rom::{
     self,
-    sf_ctrl::{SF_Ctrl_Set_Flash_Image_Offset,SF_Ctrl_Set_Owner},
-    SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE,
-    SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB,
+    sf_ctrl::{SF_Ctrl_Set_Flash_Image_Offset, SF_Ctrl_Set_Owner},
+    SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE, SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB,
 };
 
 // These are for verify, remove them if we don't implement that
 // intrinsics::transmute, ops::Range,
-use core::{slice};
-use panic_abort as _;
+use core::slice;
+// use panic_abort as _;
+use core::panic::PanicInfo;
 
 /// Position in memory where SPI flash is mapped to
 ///
@@ -25,6 +25,9 @@ use panic_abort as _;
 /// binaries to get to the correct offset. If we fake it, verify is *SUPER* slow compared to memory mapped read.
 /// So let try setting the flash offset to 0 for now, and put all the pressure on the caller
 const BASE_ADDRESS: u32 = 0x2300_0000;
+/// Flash offset for app1 is 0x10000, but the header for it comes first
+/// so the actual location of the user program is at 0x2301_1000
+const FLASH_OFFSET: u32 = 0x1_1000;
 
 /// Segger tools require the PrgData section to exist in the target binary
 ///
@@ -51,12 +54,13 @@ pub extern "C" fn EraseSector(adr: u32) -> i32 {
     // sector size is 4KB (2^12, 4096 bytes)
     // division is a checked operation, don't want to pull in panic handlers
     // use bit shifts to get the target sector instead
-    let addr_native = adr.wrapping_sub(BASE_ADDRESS);
+    let addr_native = adr.wrapping_sub(BASE_ADDRESS - FLASH_OFFSET);
     let target_sector = addr_native >> 12;
-    match sflash::SFlash_Sector_Erase(&mut cfg, target_sector) {
+    let _ = match sflash::SFlash_Sector_Erase(&mut cfg, target_sector) {
         0 => 0,
         _ => 1,
-    }
+    };
+    0
 }
 
 /// Erase the chip
@@ -66,10 +70,11 @@ pub extern "C" fn EraseSector(adr: u32) -> i32 {
 #[inline(never)]
 pub extern "C" fn EraseChip() -> i32 {
     let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
-    match sflash::SFlash_Chip_Erase(&mut cfg) {
+    let _ = match sflash::SFlash_Chip_Erase(&mut cfg) {
         0 => 0,
         _ => 1,
-    }
+    };
+    0
 }
 
 /// Initializes the microcontroller for Flash programming. Returns 0 on Success, 1 otherwise
@@ -88,11 +93,15 @@ pub extern "C" fn EraseChip() -> i32 {
 pub extern "C" fn Init(_adr: u32, _clk: u32, _fnc: u32) -> i32 {
     // disable memory-mapped flash
     // do nothing on verify to speed things up
-    sflash::SFlash_Cache_Read_Disable();
-    SF_Ctrl_Set_Flash_Image_Offset(0);
-    SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB);
+    if _fnc == 3 {
+        0
+    } else {
+        sflash::SFlash_Cache_Read_Disable();
+        SF_Ctrl_Set_Flash_Image_Offset(FLASH_OFFSET);
+        SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB);
 
-    0
+        0
+    }
 }
 
 /// Write code into the Flash memory. Call this to download a program to Flash. Returns 0 on Success, 1 otherwise
@@ -110,7 +119,8 @@ pub extern "C" fn Init(_adr: u32, _clk: u32, _fnc: u32) -> i32 {
 #[inline(never)]
 pub extern "C" fn ProgramPage(adr: u32, sz: u32, buf: *mut u8) -> i32 {
     let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
-    let addr = adr.wrapping_sub(BASE_ADDRESS);
+    let addr = adr.wrapping_sub(BASE_ADDRESS - FLASH_OFFSET);
+
     match sflash::SFlash_Program(&mut cfg, SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE, addr, buf, sz) {
         0 => 0,
         _ => 1,
@@ -131,8 +141,8 @@ pub extern "C" fn UnInit(_fnc: u32) -> i32 {
     // TODO: re-enable cache
 
     // Cheating for now and calling the XIP function, which seems to do the trick
-    let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
-    xip_sflash::XIP_SFlash_State_Restore(&mut cfg, 0);
+    SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB);
+    sflash::SFlash_Cache_Flush();
     0
 }
 
@@ -155,7 +165,7 @@ pub extern "C" fn UnInit(_fnc: u32) -> i32 {
 #[inline(never)]
 pub unsafe extern "C" fn Verify_DISABLED(adr: u32, sz: u32, buf: *mut u8) -> u32 {
     let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
-    let addr = adr.wrapping_sub(BASE_ADDRESS);
+    let addr = adr.wrapping_sub(BASE_ADDRESS - FLASH_OFFSET);
     let readbuf: [u8; 4096] = [0; 4096];
     let verifybuf = slice::from_raw_parts(buf, sz as usize);
 
@@ -206,11 +216,11 @@ pub static FlashDevice: FlashDeviceDescription = FlashDeviceDescription {
     dev_type: 5,
     dev_addr: BASE_ADDRESS,
     device_size: 0x1e8480,
-    page_size: 256,
+    page_size: 4096,
     _reserved: 0,
     empty: 0xff,
-    program_time_out: 5,
-    erase_time_out: 20000,
+    program_time_out: 500,
+    erase_time_out: 6000,
     flash_sectors: sectors(),
 };
 
@@ -250,3 +260,8 @@ const SECTOR_END: FlashSector = FlashSector {
     size: 0xffff_ffff,
     address: 0xffff_ffff,
 };
+
+#[panic_handler]
+fn panic(_info: &PanicInfo) -> ! {
+    loop {}
+}
