@@ -1,0 +1,55 @@
+---
+name: BL6xx Series
+manufacturer: ~
+variants:
+  - name: BL602
+    part: ~
+    cores:
+      - name: main
+        type: riscv
+        core_access_options:
+          Riscv: {}
+    memory_map:
+      - Nvm:
+          name: ~
+          range:
+            start: 587202560
+            end: 591396864
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ~
+          range:
+            start: 33587200
+            end: 33865727
+          is_boot_memory: false
+          cores:
+            - main
+    flash_algorithms:
+      - bl602-flashloader
+flash_algorithms:
+  - name: bl602-flashloader
+    description: ""
+    default: true
+    instructions: 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
+    load_address: ~
+    pc_init: 454
+    pc_uninit: 740
+    pc_program_page: 502
+    pc_erase_sector: 0
+    pc_erase_all: 232
+    data_section_offset: 2232
+    flash_properties:
+      address_range:
+        start: 587202560
+        end: 589202560
+      page_size: 4096
+      erased_byte_value: 255
+      program_page_timeout: 500
+      erase_sector_timeout: 6000
+      sectors:
+        - size: 4096
+          address: 0
+    cores:
+      - main
