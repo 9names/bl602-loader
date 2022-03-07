@@ -1,0 +1,12 @@
+<DataBase>
+  <!-- Flash with address 0x2300_0000 mapped to flash address 0x0 -->
+  <Device>
+   <ChipInfo Vendor="Bouffalo" Name="BL602" Core="JLINK_CORE_RISC_V" WorkRAMAddr="0x22014000" WorkRAMSize="0x0000C000" />
+   <FlashBankInfo Name="Internal Flash" BaseAddr="0x23000000" MaxSize="0x23400000" Loader="Devices/bl602/bl602-flashloader.elf" LoaderType="FLASH_ALGO_TYPE_OPEN" AlwaysPresent="1" />
+  </Device>
+  <!-- Flash with address 0x2300_0000 mapped to flash address 0x11000, which is where app1 is located -->
+  <Device>
+   <ChipInfo Vendor="Bouffalo" Name="BL602-app" Core="JLINK_CORE_RISC_V" WorkRAMAddr="0x22014000" WorkRAMSize="0x0000C000" />
+   <FlashBankInfo Name="Internal Flash" BaseAddr="0x23000000" MaxSize="0x23400000" Loader="Devices/bl602/bl602-flashloader-app.elf" LoaderType="FLASH_ALGO_TYPE_OPEN" AlwaysPresent="1" />
+  </Device>
+</DataBase>
