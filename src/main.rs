@@ -215,7 +215,7 @@ pub static FlashDevice: FlashDeviceDescription = FlashDeviceDescription {
     dev_name: [0u8; 128],
     dev_type: 5,
     dev_addr: BASE_ADDRESS,
-    device_size: 0x1e8480,
+    device_size: 0x1000000,
     page_size: 4096,
     _reserved: 0,
     empty: 0xff,
