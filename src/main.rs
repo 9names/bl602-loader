@@ -27,7 +27,24 @@ use core::panic::PanicInfo;
 const BASE_ADDRESS: u32 = 0x2300_0000;
 /// Flash offset for app1 is 0x10000, but the header for it comes first
 /// so the actual location of the user program is at 0x2301_1000
-const FLASH_OFFSET: u32 = 0x1_1000;
+/// Flash offset for app1
+#[cfg(feature = "offset_0")]
+const FLASH_OFFSET: u32 = 0x0;
+#[cfg(feature = "offset_2000")]
+const FLASH_OFFSET: u32 = 0x2000;
+#[cfg(feature = "offset_10000")]
+const FLASH_OFFSET: u32 = 0x10000;
+#[cfg(feature = "offset_11000")]
+const FLASH_OFFSET: u32 = 0x11000;
+
+// default offset is none
+#[cfg(not(any(
+    feature = "offset_0",
+    feature = "offset_2000",
+    feature = "offset_10000",
+    feature = "offset_11000"
+)))]
+const FLASH_OFFSET: u32 = 0x0;
 
 /// Segger tools require the PrgData section to exist in the target binary
 ///
@@ -265,3 +282,7 @@ const SECTOR_END: FlashSector = FlashSector {
 fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
+
+#[allow(non_snake_case)]
+#[no_mangle]
+fn DefaultHandler() {}
