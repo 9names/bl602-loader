@@ -1,5 +1,11 @@
 # BL602 flash loader
 
+---
+
+Please note that this flash loader does not function correctly, and I will probably never get back to finishing it  
+
+---
+
 CMSIS-PACK compatible flash loader for the BL602
 
 Based on https://github.com/Tiwalun/hifive-flashloader, and the information at https://www.keil.com/pack/doc/CMSIS/Pack/html/flashAlgorithm.html
